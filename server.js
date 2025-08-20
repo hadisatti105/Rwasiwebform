@@ -7,18 +7,18 @@ import { fileURLToPath } from "url";
 const app = express();
 app.use(cors());
 
-// Resolve __dirname in ES modules
+// Fix __dirname in ES Modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Serve frontend files from /public
+// Serve static frontend from /public
 app.use(express.static(path.join(__dirname, "public")));
 
-// API route for Ringba enrichment
+// Enrichment API route
 app.get("/enrich", async (req, res) => {
   const { callerid } = req.query;
 
-  // Hardcoded keys
+  // Hardcoded keys (you can change these if needed)
   const key1 = "campaign123";
   const key2 = "google_ads";
 
@@ -32,15 +32,30 @@ app.get("/enrich", async (req, res) => {
 
   try {
     const response = await fetch(url);
-    const data = await response.json();
+
+    // if response is not JSON, handle gracefully
+    const text = await response.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = { raw: text };
+    }
+
     res.json(data);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("Fetch failed:", err.message);
+    res.status(500).json({ error: "Failed to fetch from Ringba API" });
   }
 });
 
-// Use Render’s PORT environment variable
+// Catch-all: send frontend index.html
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
+// Render provides PORT
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () =>
-  console.log(`✅ Server running on http://localhost:${PORT}`)
-);
+app.listen(PORT, () => {
+  console.log(`✅ Server running on http://localhost:${PORT}`);
+});
